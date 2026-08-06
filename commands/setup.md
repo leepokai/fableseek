@@ -13,9 +13,9 @@ Set up fableseek for this user. The plugin's files live at `${CLAUDE_PLUGIN_ROOT
    curl -sS --max-time 30 https://api.deepseek.com/anthropic/v1/messages \
      -H "x-api-key: $DEEPSEEK_API_KEY" -H "anthropic-version: 2023-06-01" \
      -H "content-type: application/json" \
-     -d '{"model":"deepseek-v4-flash","max_tokens":16,"messages":[{"role":"user","content":"Reply with exactly: OK"}]}'
+     -d '{"model":"deepseek-v4-flash","max_tokens":256,"messages":[{"role":"user","content":"Reply with exactly: OK"}]}'
    ```
-   (Read the key from the config file if it is not in the environment.) Report success or the error returned.
+   (Read the key from the config file if it is not in the environment; use another HTTP client if local shell hooks mangle curl output.) Judge success by a non-empty `text` entry in `content` — DeepSeek V4 models emit a `thinking` block first and thinking consumes `max_tokens`, so a too-small budget yields an empty `text` with tokens billed. That means the budget was too small, NOT that the key is bad; never set it below 256 here. Report success or the error returned.
 
 4. **Optional defaults.** Ask whether the user wants defaults written to `~/.config/fableseek/config`, e.g. `FABLESEEK_MODEL=deepseek-v4-pro` (stronger implementer) or `FABLESEEK_CONTEXT=<tokens>`. Explicit env vars always override the file.
 
