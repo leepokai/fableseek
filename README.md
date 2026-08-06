@@ -84,6 +84,11 @@ fableseek -P kimi "task"                   # needs MOONSHOT_API_KEY + FABLESEEK_
 fableseek -P glm  "task"                   # needs ZHIPU_API_KEY + FABLESEEK_MODEL
 
 FABLESEEK_JSON=1 fableseek "task" > out.json && fableseek-cost out.json   # real provider cost
+
+fableseek-ask "quick question"             # direct model query: one API call, ~3s,
+                                           # no harness, no file access (second opinions,
+                                           # model comparisons; FABLESEEK_ASK_THINKING=1
+                                           # prints the reasoning)
 ```
 
 Every dispatch is automatically framed the way Claude Code frames its own subagents — role, machine-report contract ("state files touched, verification commands and their actual output, deviations"), and a no-commit boundary. `FABLESEEK_RAW=1` skips the framing. The preamble is constant, so it joins the cached prompt prefix: DeepSeek's implicit context caching reuses the unchanged system prompt + preamble across dispatches (cache hits bill at ~1/50 of the normal input rate), and `FABLESEEK_RESUME` follow-ups reuse the entire prior conversation.

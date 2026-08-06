@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# fableseek-ask — ask DeepSeek a question directly. No Claude Code subprocess,
+# no tools, no file access: one API call, the answer on stdout. For getting a
+# second opinion or trying the model, not for implementation (use fableseek).
+#
+# Usage:
+#   fableseek-ask "question"         # question as argument
+#   fableseek-ask < prompt.md        # question from stdin
+#
+# Env:
+#   DEEPSEEK_API_KEY            or in ~/.config/fableseek/config
+#   FABLESEEK_MODEL             default deepseek-v4-flash
+#   FABLESEEK_ASK_MAX_TOKENS    default 4096 (thinking counts against this —
+#                               never set it tiny; see README)
+#   FABLESEEK_ASK_THINKING=1    also print the model's thinking, to stderr
+set -euo pipefail
+
+command -v jq >/dev/null 2>&1 || {
+  echo "fableseek-ask: jq is required" >&2
+  exit 127
+}
+
+CONFIG_FILE="${FABLESEEK_CONFIG:-$HOME/.config/fableseek/config}"
+if [ -f "$CONFIG_FILE" ] && [ -z "${DEEPSEEK_API_KEY:-}" ]; then
+  while IFS='=' read -r k v; do
+    if [ "$k" = "DEEPSEEK_API_KEY" ]; then
+      DEEPSEEK_API_KEY="$v"
+    fi
+  done < "$CONFIG_FILE"
+fi
+KEY="${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY (env or ~/.config/fableseek/config)}"
+
+MODEL="${FABLESEEK_MODEL:-deepseek-v4-flash}"
+MAX_TOKENS="${FABLESEEK_ASK_MAX_TOKENS:-4096}"
+
+if [ $# -ge 1 ]; then
+  QUESTION="$*"
+else
+  if [ -t 0 ]; then
+    echo 'usage: fableseek-ask "question"   (or pipe a prompt via stdin)' >&2
+    exit 1
+  fi
+  QUESTION="$(cat)"
+fi
+if [ -z "$(printf '%s' "$QUESTION" | tr -d '[:space:]')" ]; then
+  echo "fableseek-ask: empty question" >&2
+  exit 1
+fi
+
+BODY="$(jq -n --arg model "$MODEL" --arg q "$QUESTION" --argjson max "$MAX_TOKENS" \
+  '{model: $model, max_tokens: $max, messages: [{role: "user", content: $q}]}')"
+
+RESP="$(curl -sS --max-time 300 https://api.deepseek.com/anthropic/v1/messages \
+  -H "x-api-key: $KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "content-type: application/json" \
+  -d "$BODY")"
+
+if [ "$(printf '%s' "$RESP" | jq -r '.type // empty')" = "error" ]; then
+  printf '%s\n' "$RESP" | jq -r '"fableseek-ask: API error: " + (.error.message // .error.type // "unknown")' >&2
+  exit 1
+fi
+
+if [ "${FABLESEEK_ASK_THINKING:-0}" = "1" ]; then
+  printf '%s' "$RESP" | jq -r '.content[] | select(.type == "thinking") | .thinking' >&2
+fi
+
+TEXT="$(printf '%s' "$RESP" | jq -r '[.content[] | select(.type == "text") | .text] | join("\n")')"
+if [ -z "$TEXT" ]; then
+  echo "fableseek-ask: empty text response — thinking likely consumed the token budget; raise FABLESEEK_ASK_MAX_TOKENS (currently $MAX_TOKENS)" >&2
+  exit 1
+fi
+printf '%s\n' "$TEXT"
