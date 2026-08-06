@@ -56,14 +56,20 @@ export DEEPSEEK_API_KEY=sk-...   # https://platform.deepseek.com/api_keys
 
 Then just ask Claude to "dispatch this to DeepSeek" (or invoke `/fableseek`). Claude plans, dispatches, reviews the diff, and runs the tests.
 
-## Direct script usage
+**Optional — short command.** Symlink the script onto your PATH so dispatch is one word from any repo:
 
 ```bash
-fableseek.sh "task spec"                      # DeepSeek V4 Flash (default)
-fableseek.sh < spec.md                        # long spec via stdin
-FABLESEEK_MODEL=deepseek-v4-pro fableseek.sh "harder task"
-fableseek.sh -P kimi "task"                   # needs MOONSHOT_API_KEY + FABLESEEK_MODEL
-fableseek.sh -P glm  "task"                   # needs ZHIPU_API_KEY + FABLESEEK_MODEL
+ln -sf "$(pwd)/skills/fableseek/fableseek.sh" ~/.local/bin/fableseek
+```
+
+## Direct usage
+
+```bash
+fableseek "task spec"                      # DeepSeek V4 Flash (default)
+fableseek < spec.md                        # spec streamed via stdin (any size)
+FABLESEEK_MODEL=deepseek-v4-pro fableseek "harder task"
+fableseek -P kimi "task"                   # needs MOONSHOT_API_KEY + FABLESEEK_MODEL
+fableseek -P glm  "task"                   # needs ZHIPU_API_KEY + FABLESEEK_MODEL
 ```
 
 | Env | Effect |
@@ -94,15 +100,17 @@ fableseek.sh -P glm  "task"                   # needs ZHIPU_API_KEY + FABLESEEK_
 | Implementer reports success but nothing changed | Never trust the self-report: check `git diff` and run tests. Re-dispatch quoting the concrete defects |
 | Edits landed in the wrong place | The subprocess runs in the caller's cwd — dispatch from the target repo root |
 | Two dispatches stepped on each other | Parallel runs in one checkout collide — use one git worktree per task |
-| Argument list too long | Pipe the spec via stdin: `fableseek.sh < spec.md` |
+| Spec too large for argv | Pipe it via stdin: `fableseek < spec.md` — streamed straight to the CLI, never enters argv |
+| `total_cost_usd` in JSON output looks huge | It's computed with Anthropic pricing tables and is meaningless for third-party models — check the provider's own usage dashboard |
 | Global provider overrides (cc-switch etc.) interfering | fableseek sets env explicitly per process, but a provider block in `~/.claude/settings.json` can still conflict — keep global settings on official defaults |
 | Implementer committed/pushed on its own | Say `do NOT commit or push` in every spec (the planner owns git); review before committing |
 
 ## Security notes
 
-- API keys are read from env only — never hardcoded, never written to disk by this tool.
+- API keys are read from env only — never hardcoded, never written to disk by this tool. Note that env-based auth is visible to same-user processes (`ps eww`) for the run's duration, as with any env-configured CLI.
 - Your Claude subscription OAuth token is never read, forwarded, or proxied.
 - Default permission mode is `acceptEdits` with an explicit tool allowlist; `FABLESEEK_UNSAFE=1` is opt-in and meant for disposable worktrees.
+- Headless `claude -p` skips the workspace-trust dialog — only dispatch into directories you trust.
 
 ## License
 

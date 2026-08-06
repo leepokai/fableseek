@@ -12,10 +12,10 @@ Claude stays the planner/reviewer in the current session; implementation is disp
 ## Workflow
 
 1. **Plan.** Write a self-contained spec (template below) to a file **outside the target repo** (temp/scratch dir — a spec inside the repo pollutes the diff). The implementer has ZERO conversation context — the spec is the entire interface.
-2. **Dispatch** from the target repo's root, always with `FABLESEEK_JSON=1` (captures `session_id` for follow-ups, plus cost):
+2. **Dispatch** from the target repo's root, always with `FABLESEEK_JSON=1` (captures `session_id` for follow-ups, plus cost). Use the `fableseek` command if it's on PATH; otherwise the script at `<this skill's base directory>/fableseek.sh`:
 
    ```bash
-   FABLESEEK_JSON=1 bash "<this skill's base directory>/fableseek.sh" < /path/outside/spec.md
+   FABLESEEK_JSON=1 fableseek < /path/outside/spec.md
    ```
 
    Give foreground runs a generous timeout (240s+); run anything likely longer in the background and pick up the result when it finishes.

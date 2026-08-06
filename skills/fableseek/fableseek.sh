@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# fableseek — Claude plans, DeepSeek implements.
+# fableseek — Fable plans, DeepSeek implements.
 #
 # Runs the OFFICIAL claude binary against a third-party Anthropic-compatible
 # provider by setting process-local env for this one run. Nothing global is
@@ -9,8 +9,8 @@
 # providers.
 #
 # Usage:
-#   fableseek.sh [-P provider] "task spec"      # task as argument
-#   fableseek.sh [-P provider] < spec.md        # task from stdin
+#   fableseek [-P provider] "task spec"      # task as argument
+#   fableseek [-P provider] < spec.md        # spec streamed via stdin
 #
 # Providers (-P, must be the first argument; default: deepseek):
 #   deepseek   needs DEEPSEEK_API_KEY   (https://platform.deepseek.com/api_keys)
@@ -19,20 +19,35 @@
 #
 # Env overrides:
 #   FABLESEEK_MODEL      model name (required for kimi/glm; deepseek defaults
-#                       to deepseek-v4-flash)
-#   FABLESEEK_CONTEXT    context window to assume (default 1000000 for
-#                       deepseek — V4 supports 1M; unset for kimi/glm)
+#                        to deepseek-v4-flash)
+#   FABLESEEK_CONTEXT    context window to assume, integer tokens (default
+#                        1000000 for deepseek — V4 supports 1M)
 #   FABLESEEK_JSON=1     --output-format json (includes session_id and cost)
 #   FABLESEEK_RESUME=id  --resume that session for a follow-up round
 #   FABLESEEK_UNSAFE=1   --dangerously-skip-permissions instead of the default
-#                       acceptEdits + tool allowlist (disposable dirs only)
+#                        acceptEdits + tool allowlist (disposable dirs only)
 set -euo pipefail
+
+command -v claude >/dev/null 2>&1 || {
+  echo "fableseek: claude CLI not found in PATH" >&2
+  exit 127
+}
 
 PROVIDER="deepseek"
 if [ "${1:-}" = "-P" ]; then
-  PROVIDER="$2"
+  PROVIDER="${2:-}"
+  if [ -z "$PROVIDER" ]; then
+    echo "fableseek: -P requires a provider (deepseek|kimi|glm)" >&2
+    exit 1
+  fi
   shift 2
 fi
+for arg in "$@"; do
+  if [ "$arg" = "-P" ]; then
+    echo "fableseek: -P must be the first argument" >&2
+    exit 1
+  fi
+done
 
 CONTEXT="${FABLESEEK_CONTEXT:-}"
 
@@ -61,13 +76,27 @@ case "$PROVIDER" in
     ;;
 esac
 
+case "$CONTEXT" in
+  ''|*[!0-9]*)
+    if [ -n "$CONTEXT" ]; then
+      echo "fableseek: FABLESEEK_CONTEXT must be an integer token count, got '$CONTEXT'" >&2
+      exit 1
+    fi
+    ;;
+esac
+
+# Argument form passes the task via argv; stdin form streams the spec straight
+# through to `claude -p`, so huge specs never hit ARG_MAX.
+PROMPT_ARGS=(-p)
 if [ $# -ge 1 ]; then
   TASK="$*"
-else
-  TASK="$(cat)"
-fi
-if [ -z "$(printf '%s' "$TASK" | tr -d '[:space:]')" ]; then
-  echo "fableseek: empty task spec" >&2
+  if [ -z "$(printf '%s' "$TASK" | tr -d '[:space:]')" ]; then
+    echo "fableseek: empty task spec" >&2
+    exit 1
+  fi
+  PROMPT_ARGS=(-p "$TASK")
+elif [ -t 0 ]; then
+  echo 'usage: fableseek [-P deepseek|kimi|glm] "task spec"   (or pipe a spec via stdin)' >&2
   exit 1
 fi
 
@@ -84,6 +113,8 @@ if [ "${FABLESEEK_JSON:-0}" = "1" ]; then
   EXTRA_ARGS+=(--output-format json)
 fi
 
+# Same key under both names: DeepSeek's docs specify ANTHROPIC_API_KEY, while
+# some Anthropic-compatible providers read the bearer ANTHROPIC_AUTH_TOKEN.
 ENV_ARGS=(
   ANTHROPIC_BASE_URL="$BASE_URL"
   ANTHROPIC_API_KEY="$KEY"
@@ -96,4 +127,4 @@ if [ -n "$CONTEXT" ]; then
   ENV_ARGS+=(CLAUDE_CODE_MAX_CONTEXT_TOKENS="$CONTEXT")
 fi
 
-exec env "${ENV_ARGS[@]}" claude --model "$MODEL" "${PERM_ARGS[@]}" ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} -p "$TASK"
+exec env "${ENV_ARGS[@]}" claude --model "$MODEL" "${PERM_ARGS[@]}" ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} "${PROMPT_ARGS[@]}"
