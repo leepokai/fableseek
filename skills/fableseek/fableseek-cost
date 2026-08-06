@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# fableseek-cost — compute the REAL provider cost from fableseek JSON output.
+#
+# claude's total_cost_usd is computed with Anthropic pricing tables and is
+# meaningless for third-party models. This reads the FABLESEEK_JSON=1 output
+# (file argument or stdin) and prices it with the bundled pricing.json.
+#
+# Usage:
+#   fableseek "task" > out.json && fableseek-cost out.json
+#   FABLESEEK_JSON=1 fableseek < spec.md | fableseek-cost
+set -euo pipefail
+
+command -v jq >/dev/null 2>&1 || {
+  echo "fableseek-cost: jq is required" >&2
+  exit 127
+}
+
+# Resolve our own symlink so pricing.json is found next to the real script.
+SELF="$0"
+while [ -L "$SELF" ]; do
+  DIR="$(cd "$(dirname "$SELF")" && pwd)"
+  SELF="$(readlink "$SELF")"
+  case "$SELF" in
+    /*) ;;
+    *) SELF="$DIR/$SELF" ;;
+  esac
+done
+PRICES="$(cd "$(dirname "$SELF")" && pwd)/pricing.json"
+if [ ! -f "$PRICES" ]; then
+  echo "fableseek-cost: pricing.json not found next to script" >&2
+  exit 1
+fi
+
+jq -r --slurpfile P "$PRICES" '
+  $P[0] as $prices |
+  ((.modelUsage // {}) | to_entries |
+  map(
+    ($prices[.key] // null) as $p |
+    if $p == null then
+      {line: ("  " + .key + ": (no pricing entry — not computed)"), cost: 0, known: false}
+    else
+      ((.value.inputTokens // 0) * $p.input
+       + (.value.cacheCreationInputTokens // 0) * $p.input
+       + (.value.cacheReadInputTokens // 0) * $p.cache_read
+       + (.value.outputTokens // 0) * $p.output) as $c |
+      {line: ("  " + .key + ": $" + ($c * 10000 | round / 10000 | tostring)
+              + "  (in " + ((.value.inputTokens // 0) | tostring)
+              + ", cache-read " + ((.value.cacheReadInputTokens // 0) | tostring)
+              + ", out " + ((.value.outputTokens // 0) | tostring) + ")"),
+       cost: $c, known: true}
+    end
+  )) as $rows |
+  ($rows | map(.cost) | add // 0) as $total |
+  ($rows[].line),
+  ("TOTAL: $" + ($total * 10000 | round / 10000 | tostring)
+   + "   (claude reported $" + ((.total_cost_usd // 0) * 100 | round / 100 | tostring)
+   + " with Anthropic pricing — ignore)")
+' "${1:-/dev/stdin}"

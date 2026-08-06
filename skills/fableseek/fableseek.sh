@@ -65,6 +65,12 @@ for arg in "$@"; do
     exit 1
   fi
 done
+case "${1:-}" in
+  -?*)
+    echo "fableseek: unknown flag '$1' — the task spec is a plain argument; the only flag is -P <provider>" >&2
+    exit 1
+    ;;
+esac
 
 CONTEXT="${FABLESEEK_CONTEXT:-}"
 
@@ -102,19 +108,32 @@ case "$CONTEXT" in
     ;;
 esac
 
+# Every dispatch is framed the way Claude Code frames its own subagents: role,
+# report contract ("your final message is machine-read"), and boundaries.
+# FABLESEEK_RAW=1 skips the framing and sends the task verbatim.
+PREAMBLE='You are a headless implementer agent dispatched by a planning agent. Your final message is read by the planner as a machine report, not by a human: state what you changed (files touched), how you verified it (commands run and their actual output), and any deviation from or ambiguity in the spec. Follow the spec exactly; where it is silent, match the existing conventions of the repo. If the spec includes VERIFY commands, iterate until they pass. Never commit or push unless the spec explicitly instructs it.
+
+=== TASK SPEC ===
+'
+
 # Argument form passes the task via argv; stdin form streams the spec straight
 # through to `claude -p`, so huge specs never hit ARG_MAX.
-PROMPT_ARGS=(-p)
+MODE=arg
 if [ $# -ge 1 ]; then
   TASK="$*"
   if [ -z "$(printf '%s' "$TASK" | tr -d '[:space:]')" ]; then
     echo "fableseek: empty task spec" >&2
     exit 1
   fi
-  PROMPT_ARGS=(-p "$TASK")
-elif [ -t 0 ]; then
-  echo 'usage: fableseek [-P deepseek|kimi|glm] "task spec"   (or pipe a spec via stdin)' >&2
-  exit 1
+  if [ "${FABLESEEK_RAW:-0}" != "1" ]; then
+    TASK="$PREAMBLE$TASK"
+  fi
+else
+  if [ -t 0 ]; then
+    echo 'usage: fableseek [-P deepseek|kimi|glm] "task spec"   (or pipe a spec via stdin)' >&2
+    exit 1
+  fi
+  MODE=stdin
 fi
 
 PERM_ARGS=(--permission-mode acceptEdits --allowedTools "Read" "Edit" "Write" "Glob" "Grep" "Bash")
@@ -144,4 +163,12 @@ if [ -n "$CONTEXT" ]; then
   ENV_ARGS+=(CLAUDE_CODE_MAX_CONTEXT_TOKENS="$CONTEXT")
 fi
 
-exec env "${ENV_ARGS[@]}" claude --model "$MODEL" "${PERM_ARGS[@]}" ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} "${PROMPT_ARGS[@]}"
+CMD=(env "${ENV_ARGS[@]}" claude --model "$MODEL" "${PERM_ARGS[@]}" ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"})
+
+if [ "$MODE" = "arg" ]; then
+  exec "${CMD[@]}" -p "$TASK"
+elif [ "${FABLESEEK_RAW:-0}" != "1" ]; then
+  { printf '%s' "$PREAMBLE"; cat; } | "${CMD[@]}" -p
+else
+  exec "${CMD[@]}" -p
+fi

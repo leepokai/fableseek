@@ -71,12 +71,16 @@ Recognized keys: `DEEPSEEK_API_KEY`, `MOONSHOT_API_KEY`, `ZHIPU_API_KEY`, `FABLE
 ## Direct usage
 
 ```bash
-fableseek "task spec"                      # DeepSeek V4 Flash (default)
+fableseek "task spec"                      # DeepSeek V4 Flash (default); no -p needed
 fableseek < spec.md                        # spec streamed via stdin (any size)
 FABLESEEK_MODEL=deepseek-v4-pro fableseek "harder task"
 fableseek -P kimi "task"                   # needs MOONSHOT_API_KEY + FABLESEEK_MODEL
 fableseek -P glm  "task"                   # needs ZHIPU_API_KEY + FABLESEEK_MODEL
+
+FABLESEEK_JSON=1 fableseek "task" > out.json && fableseek-cost out.json   # real provider cost
 ```
+
+Every dispatch is automatically framed the way Claude Code frames its own subagents — role, machine-report contract ("state files touched, verification commands and their actual output, deviations"), and a no-commit boundary. `FABLESEEK_RAW=1` skips the framing. The preamble is constant, so it joins the cached prompt prefix: DeepSeek's implicit context caching reuses the unchanged system prompt + preamble across dispatches (cache hits bill at ~1/50 of the normal input rate), and `FABLESEEK_RESUME` follow-ups reuse the entire prior conversation.
 
 | Env | Effect |
 |---|---|
@@ -107,7 +111,7 @@ fableseek -P glm  "task"                   # needs ZHIPU_API_KEY + FABLESEEK_MOD
 | Edits landed in the wrong place | The subprocess runs in the caller's cwd — dispatch from the target repo root |
 | Two dispatches stepped on each other | Parallel runs in one checkout collide — use one git worktree per task |
 | Spec too large for argv | Pipe it via stdin: `fableseek < spec.md` — streamed straight to the CLI, never enters argv |
-| `total_cost_usd` in JSON output looks huge | It's computed with Anthropic pricing tables and is meaningless for third-party models — check the provider's own usage dashboard |
+| `total_cost_usd` in JSON output looks huge | It's computed with Anthropic pricing tables and is meaningless for third-party models — run `fableseek-cost` on the JSON for the real number (bundled `pricing.json`, sourced from DeepSeek's docs) |
 | Global provider overrides (cc-switch etc.) interfering | fableseek sets env explicitly per process, but a provider block in `~/.claude/settings.json` can still conflict — keep global settings on official defaults |
 | Implementer committed/pushed on its own | Say `do NOT commit or push` in every spec (the planner owns git); review before committing |
 

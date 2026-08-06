@@ -1,0 +1,5 @@
+{
+  "_source": "https://api-docs.deepseek.com/quick_start/pricing cross-checked with LiteLLM model_prices_and_context_window.json, 2026-08-06. USD per token. cache_creation billed at input rate.",
+  "deepseek-v4-flash": { "input": 1.4e-7, "output": 2.8e-7, "cache_read": 2.8e-9 },
+  "deepseek-v4-pro": { "input": 4.35e-7, "output": 8.7e-7, "cache_read": 3.625e-9 }
+}

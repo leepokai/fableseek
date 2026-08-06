@@ -6,7 +6,7 @@ Set up fableseek for this user. The plugin's files live at `${CLAUDE_PLUGIN_ROOT
 
 1. **API key.** Check whether `DEEPSEEK_API_KEY` is set in the environment or present in `~/.config/fableseek/config`. If missing, ask the user for their key (from https://platform.deepseek.com/api_keys), then store it in `~/.config/fableseek/config` as `DEEPSEEK_API_KEY=<key>` (create the directory if needed, `chmod 600` the file). The script reads this file automatically, so no shell-profile edit is required — only add it to the shell profile if the user explicitly prefers that. Never echo the key back in full; mask all but the last 4 characters.
 
-2. **PATH shortcut.** Create a one-word command: verify `~/.local/bin` is on `PATH` (fall back to `/usr/local/bin` if writable, or ask), then `ln -sf "${CLAUDE_PLUGIN_ROOT}/skills/fableseek/fableseek.sh" ~/.local/bin/fableseek`. Confirm `command -v fableseek` resolves.
+2. **PATH shortcuts.** Create one-word commands: verify `~/.local/bin` is on `PATH` (fall back to `/usr/local/bin` if writable, or ask), then `ln -sf "${CLAUDE_PLUGIN_ROOT}/skills/fableseek/fableseek.sh" ~/.local/bin/fableseek` and `ln -sf "${CLAUDE_PLUGIN_ROOT}/skills/fableseek/fableseek-cost" ~/.local/bin/fableseek-cost`. Confirm both resolve with `command -v`.
 
 3. **Smoke test.** Verify the key works with a minimal request against the provider endpoint:
    ```bash

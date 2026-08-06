@@ -19,7 +19,8 @@ Claude stays the planner/reviewer in the current session; implementation is disp
    ```
 
    Give foreground runs a generous timeout (240s+); run anything likely longer in the background and pick up the result when it finishes.
-3. **Review.** Run `git diff`, read the changes, run the project's tests yourself. Never trust the implementer's own success report.
+   The script automatically prepends an implementer preamble (role, machine-report contract, no-commit rule) — do not duplicate that framing in specs; `FABLESEEK_RAW=1` sends the task verbatim instead.
+3. **Review.** Run `git diff`, read the changes, run the project's tests yourself. Never trust the implementer's own success report. For real cost, run `fableseek-cost <json-file>` (bundled next to the script) — `total_cost_usd` in the JSON uses Anthropic pricing and is meaningless here.
 4. **Iterate.** Re-dispatch with `FABLESEEK_RESUME=<session_id>` quoting the concrete defects — the implementer keeps its context and provider cache-hit pricing makes reruns nearly free. After two failed rounds, escalate to `FABLESEEK_MODEL=deepseek-v4-pro` or implement it yourself.
 
 ## Spec template
