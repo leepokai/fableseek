@@ -19,6 +19,20 @@ Three ways the roles connect, from lightest to most structured:
 2. **Inline dispatch** — the planner runs `fableseek` directly via shell and reviews in place.
 3. **Delegated cycle** — the planner spawns the bundled `fableseek:implementer` subagent, which supervises the whole dispatch → review → retry ladder in the background and returns a structured report. One agent per independent task gives cheap parallel implementation.
 
+## What's in the box
+
+The skills map to the four verbs of the workflow — implement, review, ask, fan out:
+
+| Component | Invocation | Purpose |
+|---|---|---|
+| `fableseek` skill | conversation / `/fableseek` | planner workflow: spec → dispatch → review → iterate |
+| `review` skill | "have DeepSeek review …" | read-only review dispatch + triage discipline |
+| `parallel` skill | 2+ independent tasks | worktree fan-out, concurrent dispatch, merge order |
+| `ask` skill | quick questions, second opinions | direct model query (~3s, no harness, no file access) |
+| `fableseek:implementer` agent | spawned by the planner | supervises a full dispatch cycle in the background |
+| `/fableseek:setup` command | once per machine | key storage, PATH shortcuts, smoke test |
+| `fableseek` / `fableseek-cost` / `fableseek-ask` CLIs | shell | dispatch engine; real provider cost; direct query |
+
 ```
         one conversation (you only talk to Claude)
 ┌──────────────────────────────────────────────────┐
