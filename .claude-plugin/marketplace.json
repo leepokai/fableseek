@@ -1,0 +1,11 @@
+{
+  "name": "fableseek",
+  "owner": { "name": "leepokai" },
+  "plugins": [
+    {
+      "name": "fableseek",
+      "source": "./",
+      "description": "Claude plans, DeepSeek implements — per-invocation headless dispatch to third-party models using the official Claude Code binary."
+    }
+  ]
+}
