@@ -42,6 +42,7 @@ LIMITS: do NOT commit or push; do not touch files outside <scope>; <non-goals>
 | Structured output / session id | `FABLESEEK_JSON=1` |
 | Continue an implementer session | `FABLESEEK_RESUME=<session_id>` |
 | Skip permission prompts | `FABLESEEK_UNSAFE=1` (only inside disposable dirs or git worktrees) |
+| Defaults / key storage | `~/.config/fableseek/config` (KEY=VALUE; env wins). First-time setup: `/fableseek:setup` |
 
 ## Parallel and risky work
 

@@ -48,19 +48,25 @@ The planner owns everything that needs judgment or identity: task decomposition,
 /plugin install fableseek@fableseek
 ```
 
-Set your key (once, in `~/.zshrc` or equivalent):
+Then run the guided setup — it stores your API key, creates the one-word `fableseek` command, and smoke-tests the connection:
 
-```bash
-export DEEPSEEK_API_KEY=sk-...   # https://platform.deepseek.com/api_keys
+```
+/fableseek:setup
 ```
 
-Then just ask Claude to "dispatch this to DeepSeek" (or invoke `/fableseek`). Claude plans, dispatches, reviews the diff, and runs the tests.
+After that, just ask Claude to "dispatch this to DeepSeek" (or invoke `/fableseek`). Claude plans, dispatches, reviews the diff, and runs the tests.
 
-**Optional — short command.** Symlink the script onto your PATH so dispatch is one word from any repo:
+## Configuration
 
-```bash
-ln -sf "$(pwd)/skills/fableseek/fableseek.sh" ~/.local/bin/fableseek
+Defaults live in `~/.config/fableseek/config` (`KEY=VALUE` lines, `chmod 600`; parsed with an allowlist, never sourced). Explicit env vars always win.
+
 ```
+DEEPSEEK_API_KEY=sk-...
+FABLESEEK_MODEL=deepseek-v4-flash
+FABLESEEK_CONTEXT=1000000
+```
+
+Recognized keys: `DEEPSEEK_API_KEY`, `MOONSHOT_API_KEY`, `ZHIPU_API_KEY`, `FABLESEEK_MODEL`, `FABLESEEK_CONTEXT`, `FABLESEEK_UNSAFE`, `FABLESEEK_JSON`. (`FABLESEEK_RESUME` is deliberately env-only — a session id is never a sensible default.) `FABLESEEK_CONFIG=<path>` points at an alternate file.
 
 ## Direct usage
 

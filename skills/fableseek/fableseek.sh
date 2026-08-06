@@ -33,6 +33,23 @@ command -v claude >/dev/null 2>&1 || {
   exit 127
 }
 
+# Optional defaults file (~/.config/fableseek/config, KEY=VALUE lines).
+# Explicit env always wins. Keys are allowlisted — the file is parsed, never
+# sourced, so it cannot execute code. FABLESEEK_RESUME is deliberately
+# excluded (session-specific, never a default).
+CONFIG_FILE="${FABLESEEK_CONFIG:-$HOME/.config/fableseek/config}"
+if [ -f "$CONFIG_FILE" ]; then
+  while IFS='=' read -r k v; do
+    case "$k" in
+      DEEPSEEK_API_KEY|MOONSHOT_API_KEY|ZHIPU_API_KEY|FABLESEEK_MODEL|FABLESEEK_CONTEXT|FABLESEEK_UNSAFE|FABLESEEK_JSON)
+        if [ -z "${!k:-}" ]; then
+          export "$k=$v"
+        fi
+        ;;
+    esac
+  done < "$CONFIG_FILE"
+fi
+
 PROVIDER="deepseek"
 if [ "${1:-}" = "-P" ]; then
   PROVIDER="${2:-}"
