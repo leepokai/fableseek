@@ -45,6 +45,10 @@ LIMITS: do NOT commit or push; do not touch files outside <scope>; <non-goals>
 | Skip permission prompts | `FABLESEEK_UNSAFE=1` (only inside disposable dirs or git worktrees) |
 | Defaults / key storage | `~/.config/fableseek/config` (KEY=VALUE; env wins). First-time setup: `/fableseek:setup` |
 
+## Delegating the whole cycle
+
+Instead of running the dispatch loop inline, spawn the plugin's `fableseek:implementer` agent with the spec — it handles dispatch, diff review, verification, and the retry ladder in the background and returns a structured report. Prefer this for anything non-trivial, and for parallel work spawn one agent per independent task.
+
 ## Parallel and risky work
 
 - **Independent tasks:** dispatch each in its own git worktree, then merge — parallel implementers in one checkout collide on edits.

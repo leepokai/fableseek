@@ -13,6 +13,12 @@ The division of labor:
 
 The planner owns everything that needs judgment or identity: task decomposition, spec writing, diff review, running tests, git, and any claude.ai connectors. The implementer owns the keyboard: reading files, writing code, iterating until the verify commands pass.
 
+Three ways the roles connect, from lightest to most structured:
+
+1. **Conversation** — ask Claude to "dispatch this to DeepSeek"; the `fableseek` skill teaches it the planner workflow.
+2. **Inline dispatch** — the planner runs `fableseek` directly via shell and reviews in place.
+3. **Delegated cycle** — the planner spawns the bundled `fableseek:implementer` subagent, which supervises the whole dispatch → review → retry ladder in the background and returns a structured report. One agent per independent task gives cheap parallel implementation.
+
 ```
         one conversation (you only talk to Claude)
 ┌──────────────────────────────────────────────────┐
