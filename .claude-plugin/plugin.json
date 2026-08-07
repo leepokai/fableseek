@@ -1,7 +1,7 @@
 {
   "name": "fableseek",
   "description": "Claude plans, DeepSeek implements — planner/implementer split for Claude Code. Claude stays the planner/reviewer while a third-party model (DeepSeek, Kimi, GLM) implements inside the official harness via per-invocation headless dispatch.",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "author": { "name": "leepokai" },
   "homepage": "https://github.com/leepokai/fableseek",
   "repository": "https://github.com/leepokai/fableseek",

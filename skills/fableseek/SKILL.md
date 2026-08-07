@@ -45,6 +45,10 @@ LIMITS: do NOT commit or push; do not touch files outside <scope>; <non-goals>
 | Skip permission prompts | `FABLESEEK_UNSAFE=1` (only inside disposable dirs or git worktrees) |
 | Defaults / key storage | `~/.config/fableseek/config` (KEY=VALUE; env wins). First-time setup: `/fableseek:setup` |
 
+## When NOT to dispatch
+
+Dispatch overhead (~50s harness startup + spec writing) outweighs savings for: single-file edits under ~100 lines of change, architectural decisions, or work whose spec would be longer than the diff. Do those yourself. Dispatch shines on mechanical multi-file work, well-specified features, and batch transformations. Decide delegation when planning, before deep-reading the files — reading everything first spends the planner tokens the split is meant to save.
+
 ## Delegating the whole cycle
 
 Instead of running the dispatch loop inline, spawn the plugin's `fableseek:implementer` agent with the spec — it handles dispatch, diff review, verification, and the retry ladder in the background and returns a structured report. Prefer this for anything non-trivial, and for parallel work spawn one agent per independent task.
