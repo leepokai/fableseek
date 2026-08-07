@@ -12,15 +12,19 @@ Claude stays the planner/reviewer in the current session; implementation is disp
 ## Workflow
 
 1. **Plan.** Write a self-contained spec (template below) to a file **outside the target repo** (temp/scratch dir — a spec inside the repo pollutes the diff). The implementer has ZERO conversation context — the spec is the entire interface.
-2. **Dispatch** from the target repo's root, always with `FABLESEEK_JSON=1` (captures `session_id` for follow-ups, plus cost). Use the `fableseek` command if it's on PATH; otherwise the script at `<this skill's base directory>/fableseek.sh`:
+2. **Dispatch in the background** from the target repo's root, always with `FABLESEEK_JSON=1` (captures `session_id` for follow-ups, plus cost). A dispatch takes 1–5 minutes — it is background work by nature, like a subagent: fire it, keep planning or talking, and let the completion notification trigger the review. Use the `fableseek` command if on PATH; otherwise the script at `<this skill's base directory>/fableseek.sh`:
 
    ```bash
-   FABLESEEK_JSON=1 fableseek < /path/outside/spec.md
+   FABLESEEK_JSON=1 fableseek < /path/outside/spec.md > /path/outside/out.json
    ```
 
-   Give foreground runs a generous timeout (240s+); run anything likely longer in the background and pick up the result when it finishes.
+   Pick the form by weight:
+   - **trivial, and the next step needs the result immediately** → foreground (timeout 240s+)
+   - **single task you will review yourself** → background shell dispatch (as above)
+   - **non-trivial, retries likely, or parallel** → spawn one `fableseek:implementer` agent per task; it supervises the whole dispatch → review → retry ladder asynchronously
+
    The script automatically prepends an implementer preamble (role, machine-report contract, no-commit rule) — do not duplicate that framing in specs; `FABLESEEK_RAW=1` sends the task verbatim instead.
-3. **Review.** Run `git diff`, read the changes, run the project's tests yourself. Never trust the implementer's own success report. For real cost, run `fableseek-cost <json-file>` (bundled next to the script) — `total_cost_usd` in the JSON uses Anthropic pricing and is meaningless here.
+3. **Review when the completion notification arrives.** Run `git diff`, read the changes, run the project's tests yourself. Never trust the implementer's own success report. For real cost, run `fableseek-cost <json-file>` (bundled next to the script) — `total_cost_usd` in the JSON uses Anthropic pricing and is meaningless here.
 4. **Iterate.** Re-dispatch with `FABLESEEK_RESUME=<session_id>` quoting the concrete defects — the implementer keeps its context and provider cache-hit pricing makes reruns nearly free. After two failed rounds, escalate to `FABLESEEK_MODEL=deepseek-v4-pro` or implement it yourself.
 
 ## Spec template
